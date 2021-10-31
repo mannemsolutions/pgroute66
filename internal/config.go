@@ -32,7 +32,7 @@ type RouteConfig struct {
 	Hosts RouteHostsConfig `yaml:"hosts"`
 	Bind string `yaml:"bind"`
 	Port int `yaml:"port"`
-	ssl string
+	Ssl RouteSSLConfig `yaml:"ssl"`
 	LogLevel zapcore.Level `yaml:"loglevel"`
 	Verbosity string `yaml:"verbosity"`
 }

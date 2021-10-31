@@ -4,18 +4,23 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v4"
+	"os"
 	"strings"
 )
 
 type Conn struct {
 	connParams Dsn
+	endpoint string
 	conn       *pgx.Conn
 }
 
 func NewConn(connParams Dsn) (c *Conn) {
-	return &Conn{
+	c = &Conn{
 		connParams: connParams,
 	}
+	c.endpoint = fmt.Sprintf("%s:%s", c.Host(), c.Port())
+
+	return c
 }
 
 func (c *Conn) DSN() (dsn string) {
@@ -26,14 +31,40 @@ func (c *Conn) DSN() (dsn string) {
 	return strings.Join(pairs[:], " ")
 }
 
+func (c *Conn) Host() (string) {
+	value, ok := c.connParams["host"]
+	if ok {
+		return value
+	}
+	value = os.Getenv("PGHOST")
+	if value != "" {
+		return value
+	}
+	return "localhost"
+}
+
+func (c *Conn) Port() (string) {
+	value, ok := c.connParams["port"]
+	if ok {
+		return value
+	}
+	value = os.Getenv("PGPORT")
+	if value != "" {
+		return value
+	}
+	return "5432"
+}
+
 func (c *Conn) Connect() (err error) {
 	if c.conn != nil {
 		if c.conn.IsClosed() {
 			c.conn = nil
 		} else {
+			log.Debugf("Already connected to %v", c.DSN())
 			return nil
 		}
 	}
+	log.Debugf("Connecting to %s (%v)", c.endpoint, c.DSN())
 	c.conn, err = pgx.Connect(context.Background(), c.DSN())
 	if err != nil {
 		c.conn = nil
@@ -43,6 +74,7 @@ func (c *Conn) Connect() (err error) {
 }
 
 func (c *Conn) runQueryExists(query string, args ...interface{}) (exists bool, err error) {
+	log.Debugf("Running query `%s` on %s", query, c.endpoint)
 	err = c.Connect()
 	if err != nil {
 		return false, err
@@ -50,34 +82,14 @@ func (c *Conn) runQueryExists(query string, args ...interface{}) (exists bool, e
 	var answer string
 	err = c.conn.QueryRow(context.Background(), query, args...).Scan(&answer)
 	if err == pgx.ErrNoRows {
+		log.Debugf("Query `%s` returns no rows for %s", query, c.endpoint)
 		return false, nil
 	}
 	if err == nil {
+		log.Debugf("Query `%s` returns rows for %s", query, c.endpoint)
 		return true, nil
 	}
 	return false, err
-}
-
-func (c *Conn) runQueryExec(query string, args ...interface{}) (err error) {
-	err = c.Connect()
-	if err != nil {
-		return err
-	}
-	_, err = c.conn.Exec(context.Background(), query, args...)
-	return err
-}
-
-func (c *Conn) runQueryGetOneField(query string, args ...interface{}) (answer string, err error) {
-	err = c.Connect()
-	if err != nil {
-		return "", err
-	}
-
-	err = c.conn.QueryRow(context.Background(), query, args...).Scan(&answer)
-	if err != nil {
-		return "", fmt.Errorf("runQueryGetOneField (%s) failed: %v\n", query, err)
-	}
-	return answer, nil
 }
 
 func (c *Conn) IsPrimary() (bool, error) {

@@ -12,16 +12,23 @@ func RunAPI() {
 	router.GET("/v1/standbys", getStandbys)
 	router.GET("/v1/status/:id", getStatus)
 
-	router.Run(config.BindTo())
+	err := router.Run(config.BindTo())
+	if err != nil {
+		log.Panicf("Error running API: %s", err.Error())
+	}
 }
 
 // getPrimary responds with the list of all albums as JSON.
 func getPrimary(c *gin.Context) {
 	primary := handler.GetPrimaries()
-	if len(primary) == 1 {
+	switch len(primary) {
+	case 0:
+		c.IndentedJSON(http.StatusNotFound, []string{})
+	case 1:
 		c.IndentedJSON(http.StatusOK, primary)
+	default:
+		c.IndentedJSON(http.StatusConflict, []string{})
 	}
-	c.IndentedJSON(http.StatusConflict, []string{})
 }
 
 // getPrimaries responds with the list of all albums as JSON.

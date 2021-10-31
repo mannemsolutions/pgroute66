@@ -64,7 +64,7 @@ func (prh PgRouteHandler) GetStandbys() (standbys []string) {
 	for name, conn := range prh {
 		isStandby, err := conn.IsStandby()
 		if err != nil {
-			log.Debugf("could not get state of standby %s, %s", name, err.Error())
+			log.Debugf("Could not get state of standby %s, %s", name, err.Error())
 		}
 		if isStandby {
 			standbys = append(standbys, name)
@@ -77,7 +77,7 @@ func (prh PgRouteHandler) GetPrimaries() (primaries []string) {
 	for name, conn := range prh {
 		isPrimary, err := conn.IsPrimary()
 		if err != nil {
-			log.Debugf("could not get state of primary %s, %s", name, err.Error())
+			log.Debugf("Could not get state of primary %s, %s", name, err.Error())
 		}
 		if isPrimary {
 			primaries = append(primaries, name)
@@ -90,7 +90,7 @@ func (prh PgRouteHandler) GetNodeStatus(name string) (string) {
 	if node, exists := prh[name]; exists {
 		isPrimary, err := node.IsPrimary()
 		if err != nil {
-			log.Debugf("could not get state of node %s, %s", name, err.Error())
+			log.Debugf("Could not get state of node %s, %s", name, err.Error())
 			return "unavailable"
 		} else if isPrimary {
 			return "primary"

@@ -14,11 +14,23 @@ function primary() {
 
   re="^([0-9.]+)(.*)$"
   
-  [ -e "${PGDATA}/PG_VERSION" ] || initdb
-  if [ ! -e "${PGDATA}/conf.d" ]; then
+  if [ ! -e "${PGDATA}/PG_VERSION" ]; then
+    PWFILE=$(mktemp)
+    echo "${PGPASSWORD}" > "${PWFILE}"
+    initdb --pwfile="${PWFILE}"
+    rm "${PWFILE}"
     mkdir "${PGDATA}/conf.d"
     echo "include_dir 'conf.d'" >> "${PGDATA}/postgresql.conf"
     echo "listen_addresses = '*'" >> "${PGDATA}/conf.d/listen_address.conf"
+    while read IP
+    do
+      echo "
+host    all             postgres        ${IP}               md5
+host    replication     postgres        ${IP}               md5" >> "${PGDATA}/pg_hba.conf"
+      if [[ $IP =~ $re ]]; then
+        [ -n ${BASH_REMATCH[1]} -a ${BASH_REMATCH[1]} != '127.0.0.1' ] && MYIP=${BASH_REMATCH[1]}
+      fi
+    done <<< "$(ip a | sed -n '/inet /{s/.*inet //;s/ .*//;p}')"
   fi
   
   postgres -D "${PGDATA}"
@@ -33,6 +45,7 @@ function standby() {
   fi
 
   [ -e "${PGDATA}/PG_VERSION" ] || pg_basebackup -R -D "${PGDATA}"
+  chmod 0700 "${PGDATA}"
   postgres -D "${PGDATA}"
 }
 

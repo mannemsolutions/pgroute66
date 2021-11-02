@@ -21,13 +21,14 @@ func RunAPI() {
 // getPrimary responds with the list of all albums as JSON.
 func getPrimary(c *gin.Context) {
 	primary := handler.GetPrimaries()
+
 	switch len(primary) {
 	case 0:
-		c.IndentedJSON(http.StatusNotFound, []string{})
+		c.IndentedJSON(http.StatusNotFound, "")
 	case 1:
-		c.IndentedJSON(http.StatusOK, primary)
+		c.IndentedJSON(http.StatusOK, primary[0])
 	default:
-		c.IndentedJSON(http.StatusConflict, []string{})
+		c.IndentedJSON(http.StatusConflict, "")
 	}
 }
 
@@ -46,10 +47,10 @@ func getStatus(c *gin.Context) {
 	status := handler.GetNodeStatus(id)
 	switch status {
 	case "primary", "standby":
-		c.IndentedJSON(http.StatusOK, []string{status})
+		c.IndentedJSON(http.StatusOK, status)
 	case "invalid":
-		c.IndentedJSON(http.StatusNotFound, []string{status})
+		c.IndentedJSON(http.StatusNotFound, status)
 	case "unavailable":
-		c.IndentedJSON(http.StatusUnprocessableEntity, []string{status})
+		c.IndentedJSON(http.StatusUnprocessableEntity, status)
 	}
 }

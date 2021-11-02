@@ -31,7 +31,7 @@ func (c *Conn) DSN() (dsn string) {
 	return strings.Join(pairs[:], " ")
 }
 
-func (c *Conn) Host() (string) {
+func (c *Conn) Host() string {
 	value, ok := c.connParams["host"]
 	if ok {
 		return value
@@ -43,7 +43,7 @@ func (c *Conn) Host() (string) {
 	return "localhost"
 }
 
-func (c *Conn) Port() (string) {
+func (c *Conn) Port() string {
 	value, ok := c.connParams["port"]
 	if ok {
 		return value
@@ -93,9 +93,9 @@ func (c *Conn) runQueryExists(query string, args ...interface{}) (exists bool, e
 }
 
 func (c *Conn) IsPrimary() (bool, error) {
-	return c.runQueryExists("select 1 where not pg_is_in_recovery()")
+	return c.runQueryExists("select 'primary' where not pg_is_in_recovery()")
 }
 
 func (c *Conn) IsStandby() (bool, error) {
-	return c.runQueryExists("select 1 where pg_is_in_recovery()")
+	return c.runQueryExists("select 'standby' where pg_is_in_recovery()")
 }

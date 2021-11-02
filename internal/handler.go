@@ -33,7 +33,7 @@ func Initialize() {
 	}
 }
 
-type PgRouteHandler map[string]pg.Conn
+type PgRouteHandler map[string]*pg.Conn
 
 func NewPgRouteHandler() (*PgRouteHandler, error) {
 	var err error
@@ -54,7 +54,7 @@ func NewPgRouteHandler() (*PgRouteHandler, error) {
 			dsn["password"] = string(sDec)
 			delete(dsn, "b64password")
 		}
-		prh[name] = *(pg.NewConn(dsn))
+		prh[name] = pg.NewConn(dsn)
 	}
 
 	return &prh, nil
@@ -86,7 +86,7 @@ func (prh PgRouteHandler) GetPrimaries() (primaries []string) {
 	return primaries
 }
 
-func (prh PgRouteHandler) GetNodeStatus(name string) (string) {
+func (prh PgRouteHandler) GetNodeStatus(name string) string {
 	if node, exists := prh[name]; exists {
 		isPrimary, err := node.IsPrimary()
 		if err != nil {

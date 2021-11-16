@@ -4,7 +4,7 @@ services:
     build: ./docker/postgres
     environment:
     - PGPASSWORD=password
-    - PGHOST=pgroute66-postgres-1
+    - PGHOSTS=pgroute66_postgres_1,pgroute66_postgres_3,pgroute66_postgres_3
     networks:
       postgres: {}
     ports:

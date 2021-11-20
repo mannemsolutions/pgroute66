@@ -1,16 +1,14 @@
 version: '3.9'
 services:
+  pgroute66:
+    build: .
+    ports:
+    - "8080:8080"
+    - "8443:8443"
   postgres:
     build: ./docker/postgres
     environment:
     - PGPASSWORD=password
     - PGHOSTS=pgroute66_postgres_1,pgroute66_postgres_3,pgroute66_postgres_3
-    networks:
-      postgres: {}
     ports:
     - "5432"
-networks:
-  postgres:
-    driver: bridge
-    ipam:
-      driver: default

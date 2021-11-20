@@ -3,10 +3,10 @@ set -e
 
 PGBIN=${PGBIN:-/usr/pgsql-${PGVERSION}/bin}
 export PATH="${PGBIN}:$PATH"
+export PGDATA=${PGDATA:-/var/lib/pgsql/${PGVERSION}/data}
 
 function primary() {
   PGVERSION=${PGVERSION:-12}
-  export PGDATA=${PGDATA:-/var/lib/pgsql/${PGVERSION}/data}
   if [ ! -e "${PGDATA}" ]; then
     mkdir -p "${PGDATA}"
     chown postgres: "${PGDATA}"
@@ -38,7 +38,6 @@ function standby() {
   PGVERSION=${PGVERSION:-12}
   PGTARGET_SESSION_ATTRS=read-write
   export PGHOST=${PGHOSTS}
-  export PGDATA=${PGDATA:-/var/lib/pgsql/${PGVERSION}/data}
   if [ ! -e "${PGDATA}" ]; then
     mkdir -p "${PGDATA}"
     chown postgres: "${PGDATA}"
@@ -55,11 +54,15 @@ function pg_start() {
 }
 
 function pg_start_bg() {
-  pg_ctl start -D "${PGDATA}"
+  pg_ctl start -D "${PGDATA}" -l "${PGDATA}/postgres.log"
 }
 
 function pg_stop_bg() {
-  pg_ctl start -D "${PGDATA}"
+  pg_ctl stop -D "${PGDATA}" -l "${PGDATA}/postgres.log"
+}
+
+function pg_promote() {
+  psql -c 'select pg_promote();'
 }
 
 function waitsleep() {
@@ -76,9 +79,18 @@ case "${1}" in
   standby)
     standby
     ;;
+  rebuild)
+    pg_stop_bg
+    rm -rf "${PGDATA}"/*
+    standby
+    pg_start_bg
+    ;;
   background)
     standby || primary
     pg_start_bg
+    ;;
+  promote)
+    pg_promote
     ;;
   auto)
     standby || primary

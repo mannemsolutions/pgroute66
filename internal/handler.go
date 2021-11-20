@@ -6,6 +6,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"os"
+	"sort"
 )
 
 var (
@@ -70,6 +71,7 @@ func (prh PgRouteHandler) GetStandbys() (standbys []string) {
 			standbys = append(standbys, name)
 		}
 	}
+	sort.Strings(standbys)
 	return standbys
 }
 
@@ -83,6 +85,7 @@ func (prh PgRouteHandler) GetPrimaries() (primaries []string) {
 			primaries = append(primaries, name)
 		}
 	}
+	sort.Strings(primaries)
 	return primaries
 }
 

@@ -1,25 +1,25 @@
 ---
 hosts:
   host1:
-    host: 127.0.0.1
-    port: 52038
+    host: pgroute66_postgres_1
+    port: 5432
     user: postgres
     dbname: postgres
     b64password: cGFzc3dvcmQ=
   host2:
-    host: 127.0.0.1
-    port: 60814
+    host: pgroute66_postgres_2
+    port: 5432
     user: postgres
     dbname: postgres
     b64password: cGFzc3dvcmQ=
   host3:
-    host: 127.0.0.1
-    port: 60816
+    host: pgroute66_postgres_3
+    port: 5432
     user: postgres
     dbname: postgres
     b64password: cGFzc3dvcmQ=
 
-bind: 127.0.0.1
+bind: 0.0.0.0
 port: 8080
 
 ssl:

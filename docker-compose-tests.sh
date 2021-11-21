@@ -13,6 +13,7 @@ function assert() {
     echo "test${TST}: OK"
   else
     echo "test${TST}: EROR: expected '${EXPECTED}', but got '${RESULT}'"
+    docker-compose logs pgroute66 postgres
     return 1
   fi
 }
@@ -23,9 +24,10 @@ set -e
 if openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout pgroute66.key -out pgroute66.crt -subj "/C=NL/ST=Zuid Holland/L=Nederland/O=Mannem Solutions/CN=localhost"; then
   echo "testing with openssl"
   cat pgroute66.crt pgroute66.key
-  CERT=$(cat pgroute66.crt | base64)
-  KEY=$(cat pgroute66.key | base64)
-  echo -e "ssl:\n  b64cert: $CERT\n  b64key: $KEY" >> config.yaml
+  CERT=$(base64 -w0 < pgroute66.crt)
+  KEY=$(base64 -w0 < pgroute66.key)
+  echo -e "ssl:\n  b64cert: ${CERT}\n  b64key: ${KEY}" >> config.yaml
+  cat config.yaml
 else
   echo "testing without openssl"
 fi
@@ -33,10 +35,11 @@ fi
 docker-compose down && docker rmi pgroute66_postgres pgroute66_pgroute66  || echo new install
 docker-compose up -d --scale postgres=3
 for ((i=1;i<4;i++)); do
-  docker exec pgroute66_postgres_$i /entrypoint.sh background
+  docker exec "pgroute66_postgres_${i}" /entrypoint.sh background
 done
 
 docker-compose up -d pgroute66
+docker ps -a
 assert primary 'host1'
 assert primaries '[ host1 ]'
 assert standbys '[ host2, host3 ]'

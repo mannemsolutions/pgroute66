@@ -1,6 +1,7 @@
 package internal
 
 import (
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"github.com/mannemsolutions/pgroute66/pkg/pg"
@@ -24,8 +25,45 @@ const (
 type RouteHostsConfig map[string]pg.Dsn
 
 type RouteSSLConfig struct {
-	Cert string `yaml:"cert"`
-	Key  string `yaml:"key"`
+	Cert string `yaml:"b64cert"`
+	Key  string `yaml:"b64key"`
+}
+
+func (rsc RouteSSLConfig) Enabled() bool {
+	if rsc.Cert != "" && rsc.Key != "" {
+		return true
+	}
+	return false
+}
+
+func (rsc RouteSSLConfig) KeyBytes() ([]byte, error) {
+	if ! rsc.Enabled() {
+		return nil, fmt.Errorf("cannot get CertBytes when SSL is not enabled")
+	}
+	return base64.StdEncoding.DecodeString(rsc.Key)
+}
+
+func (rsc RouteSSLConfig) MustKeyBytes() []byte {
+	kb, err := rsc.KeyBytes()
+	if err != nil {
+		log.Fatal("could not decrypt SSL key", err)
+	}
+	return kb
+}
+
+func (rsc RouteSSLConfig) CertBytes() ([]byte, error) {
+	if ! rsc.Enabled() {
+		return nil, fmt.Errorf("cannot get CertBytes when SSL is not enabled")
+	}
+	return base64.StdEncoding.DecodeString(rsc.Cert)
+}
+
+func (rsc RouteSSLConfig) MustCertBytes() []byte {
+	cb, err := rsc.CertBytes()
+	if err != nil {
+		log.Fatal("could not decrypt SSL Cert", err)
+	}
+	return cb
 }
 
 type RouteConfig struct {

@@ -4,7 +4,7 @@ function assert() {
   TST=$((TST+1))
   EP=$1
   EXPECTED=$2
-  RESULT=$(curl "http://localhost:8080/v1/${EP}" 2>/dev/null | xargs)
+  RESULT=$(curl --cacert pgroute66.crt "https://localhost:8443/v1/${EP}" 2>/dev/null | xargs)
   if [ "${RESULT}" = "${EXPECTED}" ]; then
     echo "test${TST}: OK"
   else
@@ -15,6 +15,12 @@ function assert() {
 
 #set -x
 set -e
+
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout pgroute66.key -out pgroute66.crt -subj "/C=NL/ST=Zuid Holland/L=Nederland/O=Mannem Solutions/CN=localhost"
+CERT=$(cat pgroute66.crt | base64)
+KEY=$(cat pgroute66.key | base64)
+sed -i "s/b64cert:.*/b64cert: ${CERT}/;s/b64key:.*/b64key: ${KEY}/" config.yaml
+
 docker-compose down && docker rmi pgroute66_postgres pgroute66_pgroute66  || echo new install
 docker-compose up -d --scale postgres=3
 for ((i=1;i<4;i++)); do

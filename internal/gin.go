@@ -1,18 +1,38 @@
 package internal
 
 import (
+	"crypto/tls"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
+func must(fn func() (interface{}, error)) interface{} {
+	v, err := fn()
+	if err != nil {
+		log.Fatal(err)
+	}
+	return v
+}
+
 func RunAPI() {
+	var err error
 	router := gin.Default()
 	router.GET("/v1/primary", getPrimary)
 	router.GET("/v1/primaries", getPrimaries)
 	router.GET("/v1/standbys", getStandbys)
 	router.GET("/v1/status/:id", getStatus)
 
-	err := router.Run(config.BindTo())
+	if config.Ssl.Enabled() {
+		cert, err := tls.X509KeyPair(config.Ssl.MustCertBytes(), config.Ssl.MustKeyBytes())
+		if err != nil {
+			log.Fatal("Error parsing cert and key", err)
+		}
+		tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}}
+		server := http.Server{Addr: config.BindTo(), Handler: router, TLSConfig: &tlsConfig}
+		err = server.ListenAndServeTLS("", "")
+	} else {
+		err = router.Run(config.BindTo())
+	}
 	if err != nil {
 		log.Panicf("Error running API: %s", err.Error())
 	}

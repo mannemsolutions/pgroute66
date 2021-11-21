@@ -110,8 +110,16 @@ func NewConfig() (config RouteConfig, err error) {
 }
 
 func (rc RouteConfig) BindTo() string {
-	if rc.Bind == "" {
-		return fmt.Sprintf("localhost:%d", rc.Port)
+	port := rc.Port
+	if port == 0 {
+		if rc.Ssl.Enabled() {
+			port = 8443
+		} else {
+			port = 8080
+		}
 	}
-	return fmt.Sprintf("%s:%d", rc.Bind, rc.Port)
+	if rc.Bind == "" {
+		return fmt.Sprintf("localhost:%d", port)
+	}
+	return fmt.Sprintf("%s:%d", rc.Bind, port)
 }

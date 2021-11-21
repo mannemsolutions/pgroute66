@@ -6,31 +6,30 @@ import (
 	"net/http"
 )
 
-func must(fn func() (interface{}, error)) interface{} {
-	v, err := fn()
-	if err != nil {
-		log.Fatal(err)
-	}
-	return v
-}
-
 func RunAPI() {
 	var err error
+	var cert tls.Certificate
 	router := gin.Default()
 	router.GET("/v1/primary", getPrimary)
 	router.GET("/v1/primaries", getPrimaries)
 	router.GET("/v1/standbys", getStandbys)
 	router.GET("/v1/status/:id", getStatus)
 
+	log.Debugf("Running on %s", config.BindTo())
 	if config.Ssl.Enabled() {
-		cert, err := tls.X509KeyPair(config.Ssl.MustCertBytes(), config.Ssl.MustKeyBytes())
+		log.Debug("Running with SSL")
+		cert, err = tls.X509KeyPair(config.Ssl.MustCertBytes(), config.Ssl.MustKeyBytes())
 		if err != nil {
 			log.Fatal("Error parsing cert and key", err)
 		}
-		tlsConfig := tls.Config{Certificates: []tls.Certificate{cert}}
+		tlsConfig := tls.Config{
+			MinVersion: tls.VersionTLS12,
+			Certificates: []tls.Certificate{cert},
+		}
 		server := http.Server{Addr: config.BindTo(), Handler: router, TLSConfig: &tlsConfig}
 		err = server.ListenAndServeTLS("", "")
 	} else {
+		log.Debug("Running without SSL")
 		err = router.Run(config.BindTo())
 	}
 	if err != nil {

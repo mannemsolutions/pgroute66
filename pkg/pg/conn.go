@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"os"
 	"strings"
 )
@@ -11,7 +12,7 @@ import (
 type Conn struct {
 	connParams Dsn
 	endpoint string
-	conn       *pgx.Conn
+	pool     *pgxpool.Pool
 }
 
 func NewConn(connParams Dsn) (c *Conn) {
@@ -55,35 +56,25 @@ func (c *Conn) Port() string {
 	return "5432"
 }
 
-func (c *Conn) Connect() (err error) {
-	if c.conn != nil {
-		if c.conn.IsClosed() {
-			c.conn = nil
-		} else if c.conn.PgConn().IsBusy() {
-			log.Debugf("Connection is busy. Resetting.")
-			c.conn.Close(context.Background())
-		} else {
-			log.Debugf("Already connected to %v", c.DSN())
-			return nil
-		}
-	}
+func (c *Conn) Connect() (pool *pgxpool.Conn, err error) {
 	log.Debugf("Connecting to %s (%v)", c.endpoint, c.DSN())
-	c.conn, err = pgx.Connect(context.Background(), c.DSN())
-	if err != nil {
-		c.conn = nil
-		return err
+	if c.pool == nil {
+		log.Debugf("Creating pool for %s (%v)", c.endpoint, c.DSN())
+		c.pool, err = pgxpool.Connect(context.Background(), c.DSN())
 	}
-	return nil
+	return c.pool.Acquire(context.Background())
 }
 
 func (c *Conn) runQueryExists(query string, args ...interface{}) (exists bool, err error) {
-	log.Debugf("Running query `%s` on %s", query, c.endpoint)
-	err = c.Connect()
+	conn, err := c.Connect()
 	if err != nil {
+		log.Debugf("Error connecting to %s", c.endpoint)
 		return false, err
 	}
+	log.Debugf("Running query `%s` on %s", query, c.endpoint)
 	var answer string
-	err = c.conn.QueryRow(context.Background(), query, args...).Scan(&answer)
+	err = conn.QueryRow(context.Background(), query, args...).Scan(&answer)
+	conn.Release()
 	if err == pgx.ErrNoRows {
 		log.Debugf("Query `%s` returns no rows for %s", query, c.endpoint)
 		return false, nil

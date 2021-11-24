@@ -59,6 +59,9 @@ func (c *Conn) Connect() (err error) {
 	if c.conn != nil {
 		if c.conn.IsClosed() {
 			c.conn = nil
+		} else if c.conn.PgConn().IsBusy() {
+			log.Debugf("Connection is busy. Resetting.")
+			c.conn.Close(context.Background())
 		} else {
 			log.Debugf("Already connected to %v", c.DSN())
 			return nil

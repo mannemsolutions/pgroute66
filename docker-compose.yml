@@ -5,6 +5,12 @@ services:
     ports:
     - "8080:8080"
     - "8443:8443"
+    command:
+    - pgroute66
+    - "-c"
+    - "/test/config.yaml"
+    volumes:
+    -  ./test:/test
   postgres:
     build: ./docker/postgres
     environment:

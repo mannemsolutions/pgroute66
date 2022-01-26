@@ -21,15 +21,18 @@ function assert() {
 #set -x
 set -e
 
-if openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout pgroute66.key -out pgroute66.crt -subj "/C=NL/ST=Zuid Holland/L=Nederland/O=Mannem Solutions/CN=localhost"; then
-  echo "testing with openssl"
+if [ ! -f ./test/config.yaml ]; then
+  mkdir -p ./test
+  cp config.yaml ./test/config.yaml
+  echo "generating openssl cert"
+  openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout pgroute66.key -out pgroute66.crt -subj "/C=NL/ST=Zuid Holland/L=Nederland/O=Mannem Solutions/CN=localhost"
   cat pgroute66.crt pgroute66.key
   CERT=$(base64 -w0 < pgroute66.crt)
   KEY=$(base64 -w0 < pgroute66.key)
-  echo -e "ssl:\n  b64cert: ${CERT}\n  b64key: ${KEY}" >> config.yaml
-  cat config.yaml
+  echo -e "ssl:\n  b64cert: ${CERT}\n  b64key: ${KEY}" >> ./test/config.yaml
+  cat ./test/config.yaml
 else
-  echo "testing without openssl"
+  echo "reusing existing ./test/config.yaml"
 fi
 
 docker-compose down && docker rmi pgroute66_postgres pgroute66_pgroute66  || echo new install

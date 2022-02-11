@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"os"
 	"strings"
 )
@@ -11,7 +12,7 @@ import (
 type Conn struct {
 	connParams Dsn
 	endpoint string
-	conn       *pgx.Conn
+	conn       *pgxpool.Pool
 }
 
 func NewConn(connParams Dsn) (c *Conn) {
@@ -57,22 +58,15 @@ func (c *Conn) Port() string {
 
 func (c *Conn) Connect() (err error) {
 	if c.conn != nil {
-		if c.conn.PgConn().IsBusy() {
-			log.Debugf("Connection is busy. Resetting.")
-			err = c.conn.Close(context.Background())
-			if err != nil {
-				return err
-			}
-		}
-		if c.conn.IsClosed() {
-			c.conn = nil
-		} else {
-			log.Debugf("Already connected to %v", c.DSN())
-			return nil
-		}
+		return
 	}
 	log.Debugf("Connecting to %s (%v)", c.endpoint, c.DSN())
-	c.conn, err = pgx.Connect(context.Background(), c.DSN())
+	poolConfig, err := pgxpool.ParseConfig(c.DSN())
+	if err != nil {
+		log.Panicf("Unable to parse DSN (%s): %e", c.DSN(), err)
+		os.Exit(1)
+	}
+	c.conn, err = pgxpool.ConnectConfig(context.Background(), poolConfig)
 	if err != nil {
 		c.conn = nil
 		return err

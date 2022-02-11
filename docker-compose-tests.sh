@@ -37,7 +37,7 @@ fi
 
 docker-compose down && docker rmi pgroute66_postgres pgroute66_pgroute66  || echo new install
 docker-compose up -d --scale postgres=3
-for ((i=1;i<4;i++)); do
+for ((i=1;i<=3;i++)); do
   docker exec "pgroute66_postgres_${i}" /entrypoint.sh background
 done
 

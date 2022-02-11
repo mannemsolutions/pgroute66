@@ -6,18 +6,27 @@ hosts:
     user: postgres
     dbname: postgres
     b64password: cGFzc3dvcmQ=
+    application_name: pgroute66
+    pool_max_conns: 2
+    pool_max_conn_idle_time: 60
   host2:
     host: pgroute66_postgres_2
     port: 5432
     user: postgres
     dbname: postgres
     b64password: cGFzc3dvcmQ=
+    application_name: pgroute66
+    pool_max_conns: 2
+    pool_max_conn_idle_time: 60
   host3:
     host: pgroute66_postgres_3
     port: 5432
     user: postgres
     dbname: postgres
     b64password: cGFzc3dvcmQ=
+    application_name: pgroute66
+    pool_max_conns: 2
+    pool_max_conn_idle_time: 60
 
 loglevel: debug
 verbosity: 9

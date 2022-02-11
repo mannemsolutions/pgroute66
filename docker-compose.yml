@@ -15,6 +15,6 @@ services:
     build: ./docker/postgres
     environment:
     - PGPASSWORD=password
-    - PGHOSTS=pgroute66_postgres_1,pgroute66_postgres_3,pgroute66_postgres_3
+    - PGHOSTS=pgroute66_postgres_1,pgroute66_postgres_2,pgroute66_postgres_3
     ports:
     - "5432"

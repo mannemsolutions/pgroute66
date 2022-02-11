@@ -8,7 +8,7 @@ hosts:
     b64password: cGFzc3dvcmQ=
     application_name: pgroute66
     pool_max_conns: 2
-    pool_max_conn_idle_time: 60
+    pool_max_conn_idle_time: 60s
   host2:
     host: pgroute66_postgres_2
     port: 5432
@@ -17,7 +17,7 @@ hosts:
     b64password: cGFzc3dvcmQ=
     application_name: pgroute66
     pool_max_conns: 2
-    pool_max_conn_idle_time: 60
+    pool_max_conn_idle_time: 60s
   host3:
     host: pgroute66_postgres_3
     port: 5432
@@ -26,7 +26,7 @@ hosts:
     b64password: cGFzc3dvcmQ=
     application_name: pgroute66
     pool_max_conns: 2
-    pool_max_conn_idle_time: 60
+    pool_max_conn_idle_time: 60s
 
 loglevel: debug
 verbosity: 9

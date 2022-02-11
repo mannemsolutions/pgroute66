@@ -4,12 +4,12 @@ import (
 	"encoding/base64"
 	"flag"
 	"fmt"
-	"github.com/mannemsolutions/pgroute66/pkg/pg"
-	"go.uber.org/zap/zapcore"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
+	"github.com/mannemsolutions/pgroute66/pkg/pg"
+	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v2"
 )
 
@@ -33,64 +33,77 @@ func (rsc RouteSSLConfig) Enabled() bool {
 	if rsc.Cert != "" && rsc.Key != "" {
 		return true
 	}
+
 	return false
 }
 
 func (rsc RouteSSLConfig) KeyBytes() ([]byte, error) {
-	if ! rsc.Enabled() {
+	if !rsc.Enabled() {
 		return nil, fmt.Errorf("cannot get CertBytes when SSL is not enabled")
 	}
+
 	return base64.StdEncoding.DecodeString(rsc.Key)
 }
 
 func (rsc RouteSSLConfig) MustKeyBytes() []byte {
 	kb, err := rsc.KeyBytes()
 	if err != nil {
-		log.Fatal("could not decrypt SSL key", err)
+		globalHandler.logger.Fatal("could not decrypt SSL key", err)
 	}
+
 	return kb
 }
 
 func (rsc RouteSSLConfig) CertBytes() ([]byte, error) {
-	if ! rsc.Enabled() {
+	if !rsc.Enabled() {
 		return nil, fmt.Errorf("cannot get CertBytes when SSL is not enabled")
 	}
+
 	return base64.StdEncoding.DecodeString(rsc.Cert)
 }
 
 func (rsc RouteSSLConfig) MustCertBytes() []byte {
 	cb, err := rsc.CertBytes()
 	if err != nil {
-		log.Fatal("could not decrypt SSL Cert", err)
+		globalHandler.logger.Fatal("could not decrypt SSL Cert", err)
 	}
+
 	return cb
 }
 
 type RouteConfig struct {
-	Hosts RouteHostsConfig `yaml:"hosts"`
-	Bind string `yaml:"bind"`
-	Port int `yaml:"port"`
-	Ssl RouteSSLConfig `yaml:"ssl"`
-	LogLevel zapcore.Level `yaml:"loglevel"`
-	Verbosity string `yaml:"verbosity"`
+	Hosts     RouteHostsConfig `yaml:"hosts"`
+	Bind      string           `yaml:"bind"`
+	Port      int              `yaml:"port"`
+	Ssl       RouteSSLConfig   `yaml:"ssl"`
+	LogLevel  zapcore.Level    `yaml:"loglevel"`
+	Verbosity string           `yaml:"verbosity"`
 }
 
 func NewConfig() (config RouteConfig, err error) {
-	var configFile string
 	var debug bool
+
 	var version bool
+
+	var configFile string
+
 	flag.BoolVar(&debug, "d", false, "Add debugging output")
 	flag.BoolVar(&version, "v", false, "Show version information")
+
 	flag.StringVar(&configFile, "c", os.Getenv(envConfName), "Path to configfile")
 
 	flag.Parse()
+
 	if version {
+		//nolint
 		fmt.Println(appVersion)
 		os.Exit(0)
 	}
+
 	if configFile == "" {
 		configFile = defaultConfFile
 	}
+
 	configFile, err = filepath.EvalSymlinks(configFile)
 	if err != nil {
 		return config, err
@@ -102,10 +115,13 @@ func NewConfig() (config RouteConfig, err error) {
 	if err != nil {
 		return config, err
 	}
+
 	err = yaml.Unmarshal(yamlConfig, &config)
+
 	if debug {
 		config.LogLevel = zapcore.DebugLevel
 	}
+
 	return config, err
 }
 
@@ -118,8 +134,10 @@ func (rc RouteConfig) BindTo() string {
 			port = 8080
 		}
 	}
+
 	if rc.Bind == "" {
 		return fmt.Sprintf("localhost:%d", port)
 	}
+
 	return fmt.Sprintf("%s:%d", rc.Bind, port)
 }

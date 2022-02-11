@@ -7,7 +7,7 @@ function assert() {
   if [ -e pgroute66.crt ]; then
     RESULT=$(curl --cacert pgroute66.crt "https://localhost:8443/v1/${EP}" | xargs)
   else
-    RESULT=$(curl "http://localhost:8080:v1/${EP}" | xargs)
+    RESULT=$(curl "http://localhost:8080/v1/${EP}" | xargs)
   fi
   if [ "${RESULT}" = "${EXPECTED}" ]; then
     echo "test${TST}: OK"

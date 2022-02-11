@@ -7,9 +7,9 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/mannemsolutions/pgroute66/pkg/pg"
-	"go.uber.org/zap/zapcore"
 	"gopkg.in/yaml.v2"
 )
 
@@ -20,6 +20,7 @@ import (
 const (
 	envConfName     = "PGROUTE66CONFIG"
 	defaultConfFile = "/etc/pgroute66/config.yaml"
+	debugLoglevel   = "debug"
 )
 
 type RouteHostsConfig map[string]pg.Dsn
@@ -72,12 +73,11 @@ func (rsc RouteSSLConfig) MustCertBytes() []byte {
 }
 
 type RouteConfig struct {
-	Hosts     RouteHostsConfig `yaml:"hosts"`
-	Bind      string           `yaml:"bind"`
-	Port      int              `yaml:"port"`
-	Ssl       RouteSSLConfig   `yaml:"ssl"`
-	LogLevel  zapcore.Level    `yaml:"loglevel"`
-	Verbosity string           `yaml:"verbosity"`
+	Hosts    RouteHostsConfig `yaml:"hosts"`
+	Bind     string           `yaml:"bind"`
+	Port     int              `yaml:"port"`
+	Ssl      RouteSSLConfig   `yaml:"ssl"`
+	LogLevel string           `yaml:"loglevel"`
 }
 
 func NewConfig() (config RouteConfig, err error) {
@@ -119,7 +119,9 @@ func NewConfig() (config RouteConfig, err error) {
 	err = yaml.Unmarshal(yamlConfig, &config)
 
 	if debug {
-		config.LogLevel = zapcore.DebugLevel
+		config.LogLevel = debugLoglevel
+	} else {
+		config.LogLevel = strings.ToLower(config.LogLevel)
 	}
 
 	return config, err
@@ -140,4 +142,8 @@ func (rc RouteConfig) BindTo() string {
 	}
 
 	return fmt.Sprintf("%s:%d", rc.Bind, port)
+}
+
+func (rc RouteConfig) Debug() bool {
+	return rc.LogLevel == debugLoglevel
 }

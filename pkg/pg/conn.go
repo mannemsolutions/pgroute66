@@ -3,20 +3,26 @@ package pg
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v4"
+	"log"
 	"os"
 	"strings"
+
+	"github.com/jackc/pgx"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"go.uber.org/zap"
 )
 
 type Conn struct {
 	connParams Dsn
-	endpoint string
-	conn       *pgx.Conn
+	endpoint   string
+	conn       *pgxpool.Pool
+	logger     *zap.SugaredLogger
 }
 
-func NewConn(connParams Dsn) (c *Conn) {
+func NewConn(connParams Dsn, logger *zap.SugaredLogger) (c *Conn) {
 	c = &Conn{
 		connParams: connParams,
+		logger:     logger,
 	}
 	c.endpoint = fmt.Sprintf("%s:%s", c.Host(), c.Port())
 
@@ -24,10 +30,11 @@ func NewConn(connParams Dsn) (c *Conn) {
 }
 
 func (c *Conn) DSN() (dsn string) {
-	var pairs []string
+	pairs := make([]string, 0, len(c.connParams))
 	for key, value := range c.connParams {
 		pairs = append(pairs, fmt.Sprintf("%s=%s", key, connectStringValue(value)))
 	}
+
 	return strings.Join(pairs[:], " ")
 }
 
@@ -36,10 +43,12 @@ func (c *Conn) Host() string {
 	if ok {
 		return value
 	}
+
 	value = os.Getenv("PGHOST")
 	if value != "" {
 		return value
 	}
+
 	return "localhost"
 }
 
@@ -48,54 +57,60 @@ func (c *Conn) Port() string {
 	if ok {
 		return value
 	}
+
 	value = os.Getenv("PGPORT")
 	if value != "" {
 		return value
 	}
+
 	return "5432"
 }
 
 func (c *Conn) Connect() (err error) {
 	if c.conn != nil {
-		if c.conn.PgConn().IsBusy() {
-			log.Debugf("Connection is busy. Resetting.")
-			err = c.conn.Close(context.Background())
-			if err != nil {
-				return err
-			}
-		}
-		if c.conn.IsClosed() {
-			c.conn = nil
-		} else {
-			log.Debugf("Already connected to %v", c.DSN())
-			return nil
-		}
+		return
 	}
-	log.Debugf("Connecting to %s (%v)", c.endpoint, c.DSN())
-	c.conn, err = pgx.Connect(context.Background(), c.DSN())
+
+	c.logger.Debugf("Connecting to %s (%v)", c.endpoint, c.DSN())
+
+	poolConfig, err := pgxpool.ParseConfig(c.DSN())
+	if err != nil {
+		log.Panicf("Unable to parse DSN (%s): %e", c.DSN(), err)
+	}
+
+	c.conn, err = pgxpool.ConnectConfig(context.Background(), poolConfig)
 	if err != nil {
 		c.conn = nil
+
 		return err
 	}
+
 	return nil
 }
 
 func (c *Conn) runQueryExists(query string, args ...interface{}) (exists bool, err error) {
-	log.Debugf("Running query `%s` on %s", query, c.endpoint)
+	c.logger.Debugf("Running query `%s` on %s", query, c.endpoint)
+
 	err = c.Connect()
 	if err != nil {
 		return false, err
 	}
+
 	var answer string
 	err = c.conn.QueryRow(context.Background(), query, args...).Scan(&answer)
+
 	if err == pgx.ErrNoRows {
-		log.Debugf("Query `%s` returns no rows for %s", query, c.endpoint)
+		c.logger.Debugf("Query `%s` returns no rows for %s", query, c.endpoint)
+
 		return false, nil
 	}
+
 	if err == nil {
-		log.Debugf("Query `%s` returns rows for %s", query, c.endpoint)
+		c.logger.Debugf("Query `%s` returns rows for %s", query, c.endpoint)
+
 		return true, nil
 	}
+
 	return false, err
 }
 

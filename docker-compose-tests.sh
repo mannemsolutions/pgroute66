@@ -7,7 +7,7 @@ function assert() {
   if [ -e pgroute66.crt ]; then
     RESULT=$(curl --cacert pgroute66.crt "https://localhost:8443/v1/${EP}" | xargs)
   else
-    RESULT=$(curl "http://localhost:8080:v1/${EP}" | xargs)
+    RESULT=$(curl "http://localhost:8080/v1/${EP}" | xargs)
   fi
   if [ "${RESULT}" = "${EXPECTED}" ]; then
     echo "test${TST}: OK"
@@ -37,7 +37,7 @@ fi
 
 docker-compose down && docker rmi pgroute66_postgres pgroute66_pgroute66  || echo new install
 docker-compose up -d --scale postgres=3
-for ((i=1;i<4;i++)); do
+for ((i=1;i<=3;i++)); do
   docker exec "pgroute66_postgres_${i}" /entrypoint.sh background
 done
 

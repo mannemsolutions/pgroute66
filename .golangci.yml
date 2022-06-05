@@ -57,6 +57,7 @@ linters:
 #    - maligned
 #    - misspell
 #    - nakedret
+    - nonamedreturns
 #    - nestif
 #    - nilerr
 #    - nilnil

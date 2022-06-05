@@ -72,7 +72,6 @@ ssl:
   key: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQzakNDQXNZQ0NRRGZYZkhoanBCZHNEQU5CZ2txaGtpRzl
 
 loglevel: debug
-verbosity: 9
 
 ```
 
@@ -94,10 +93,3 @@ curl -G https://127.0.0.1:8443/v1/standbys
 curl -G https://127.0.0.1:8443/v1/node/host1
 # which could return ["primary"], ["standby"], or ["unavailable"]
 ```
-
-## logging
-Depending on the loglevel, every API call would be logging helpful information, like:
-- request and result (verbosity 2+)
-- source of the request (verbosity 3+)
-- duration (verbosity 5+)
-- state for every  (verbosity 7+)

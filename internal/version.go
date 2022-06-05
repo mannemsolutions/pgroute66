@@ -1,3 +1,3 @@
 package internal
 
-const appVersion = "v0.8.2-devel"
+const appVersion = "v0.8.3-devel"

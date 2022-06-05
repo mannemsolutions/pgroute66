@@ -53,7 +53,9 @@ func NewPgRouteHandler() *PgRouteHandler {
 		prh.logger.Fatal("Cannot parse config", err)
 	}
 
-	prh.atom.SetLevel(prh.config.LogLevel)
+	if prh.config.Debug() {
+		prh.atom.SetLevel(zapcore.DebugLevel)
+	}
 
 	for name, dsn := range prh.config.Hosts {
 		if b64password, exists := dsn["b64password"]; exists {

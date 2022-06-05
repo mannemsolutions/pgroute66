@@ -29,7 +29,6 @@ hosts:
     pool_max_conn_idle_time: 60s
 
 loglevel: debug
-verbosity: 9
 
 bind: 0.0.0.0
 

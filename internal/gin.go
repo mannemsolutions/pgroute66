@@ -14,6 +14,10 @@ func RunAPI() {
 
 	Initialize()
 
+	if !globalHandler.config.Debug() {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
 	router := gin.Default()
 	router.GET("/v1/primary", getPrimary)
 	router.GET("/v1/primaries", getPrimaries)

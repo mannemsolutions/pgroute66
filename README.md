@@ -1,4 +1,6 @@
 # pgroute66
+<img src="images/PgRoute66.png" data-canonical-src="images/PgRoute66.png" width="200" height="200" />
+
 A tool to direct routers to te correct postgres master
 
 ## The origin

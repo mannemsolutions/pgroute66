@@ -1,16 +1,13 @@
 package internal
 
 import (
-	"encoding/base64"
 	"flag"
 	"fmt"
+	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/mannemsolutions/pgroute66/pkg/pg"
-	"gopkg.in/yaml.v2"
 )
 
 /*
@@ -23,61 +20,14 @@ const (
 	debugLoglevel   = "debug"
 )
 
-type RouteHostsConfig map[string]pg.Dsn
-
-type RouteSSLConfig struct {
-	Cert string `yaml:"b64cert"`
-	Key  string `yaml:"b64key"`
-}
-
-func (rsc RouteSSLConfig) Enabled() bool {
-	if rsc.Cert != "" && rsc.Key != "" {
-		return true
-	}
-
-	return false
-}
-
-func (rsc RouteSSLConfig) KeyBytes() ([]byte, error) {
-	if !rsc.Enabled() {
-		return nil, fmt.Errorf("cannot get CertBytes when SSL is not enabled")
-	}
-
-	return base64.StdEncoding.DecodeString(rsc.Key)
-}
-
-func (rsc RouteSSLConfig) MustKeyBytes() []byte {
-	kb, err := rsc.KeyBytes()
-	if err != nil {
-		globalHandler.logger.Fatal("could not decrypt SSL key", err)
-	}
-
-	return kb
-}
-
-func (rsc RouteSSLConfig) CertBytes() ([]byte, error) {
-	if !rsc.Enabled() {
-		return nil, fmt.Errorf("cannot get CertBytes when SSL is not enabled")
-	}
-
-	return base64.StdEncoding.DecodeString(rsc.Cert)
-}
-
-func (rsc RouteSSLConfig) MustCertBytes() []byte {
-	cb, err := rsc.CertBytes()
-	if err != nil {
-		globalHandler.logger.Fatal("could not decrypt SSL Cert", err)
-	}
-
-	return cb
-}
-
 type RouteConfig struct {
 	Hosts    RouteHostsConfig `yaml:"hosts"`
+	Groups   RouteHostGroups  `yaml:"groups"`
 	Bind     string           `yaml:"bind"`
 	Port     int              `yaml:"port"`
 	Ssl      RouteSSLConfig   `yaml:"ssl"`
 	LogLevel string           `yaml:"loglevel"`
+	LogFile  string           `yaml:"logfile"`
 }
 
 func NewConfig() (config RouteConfig, err error) {
@@ -116,15 +66,32 @@ func NewConfig() (config RouteConfig, err error) {
 		return config, err
 	}
 
-	err = yaml.Unmarshal(yamlConfig, &config)
-
-	if debug {
+	if err = yaml.Unmarshal(yamlConfig, &config); err != nil {
+		return RouteConfig{}, err
+	} else if debug {
 		config.LogLevel = debugLoglevel
 	} else {
 		config.LogLevel = strings.ToLower(config.LogLevel)
 	}
+	return config, nil
+}
 
-	return config, err
+// GroupHosts returns a list of hosts that are part of a group as defined in rc.HostGroups
+// HostGroup "all" is a special placeholder for all hosts defined in rc.Hosts
+func (rc RouteConfig) GroupHosts(groupName string) RouteHostGroup {
+	if groupName == "all" {
+		var rhg RouteHostGroup
+		for host := range rc.Hosts {
+			rhg = append(rhg, host)
+		}
+		return rhg
+	}
+	if groupHosts, ok := rc.Groups[groupName]; !ok {
+		log.Errorf("hostgroup %s is not defined", groupName)
+		return RouteHostGroup{}
+	} else {
+		return groupHosts
+	}
 }
 
 func (rc RouteConfig) BindTo() string {

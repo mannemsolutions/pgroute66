@@ -28,6 +28,13 @@ hosts:
     pool_max_conns: 2
     pool_max_conn_idle_time: 60s
 
+host_groups:
+  cluster:
+    - host1
+    - host2
+    - host3
+
+
 loglevel: debug
 
 bind: 0.0.0.0

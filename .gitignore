@@ -24,3 +24,4 @@ test/config.yaml
 # And leave out temp certs too
 pgroute66.crt
 pgroute66.key
+config/pgroute66_local.yaml

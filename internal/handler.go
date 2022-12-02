@@ -1,20 +1,16 @@
 package internal
 
 import (
+	"context"
 	"encoding/base64"
-	"log"
-	"os"
 	"sort"
 
 	"github.com/mannemsolutions/pgroute66/pkg/pg"
-	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
 type PgRouteHandler struct {
-	connections map[string]*pg.Conn
-	logger      *zap.SugaredLogger
-	atom        zap.AtomicLevel
+	connections RouteConnections
 	config      RouteConfig
 }
 
@@ -30,6 +26,7 @@ func Initialize() {
 	if globalHandler == nil {
 		globalHandler = NewPgRouteHandler()
 	}
+	pg.InitContext(context.Background())
 }
 
 func NewPgRouteHandler() *PgRouteHandler {
@@ -39,22 +36,14 @@ func NewPgRouteHandler() *PgRouteHandler {
 		connections: make(map[string]*pg.Conn),
 	}
 
-	prh.atom = zap.NewAtomicLevel()
-	encoderCfg := zap.NewDevelopmentEncoderConfig()
-	encoderCfg.EncodeTime = zapcore.RFC3339TimeEncoder
-	prh.logger = zap.New(zapcore.NewCore(
-		zapcore.NewConsoleEncoder(encoderCfg),
-		zapcore.Lock(os.Stdout),
-		prh.atom,
-	)).Sugar()
-
 	prh.config, err = NewConfig()
 	if err != nil {
-		prh.logger.Fatal("Cannot parse config", err)
+		log.Fatal("Cannot parse config", err)
 	}
 
+	initLogger(prh.config.LogFile)
 	if prh.config.Debug() {
-		prh.atom.SetLevel(zapcore.DebugLevel)
+		atom.SetLevel(zapcore.DebugLevel)
 	}
 
 	for name, dsn := range prh.config.Hosts {
@@ -69,17 +58,21 @@ func NewPgRouteHandler() *PgRouteHandler {
 			delete(dsn, "b64password")
 		}
 
-		prh.connections[name] = pg.NewConn(dsn, prh.logger)
+		prh.connections[name] = pg.NewConn(dsn, log)
 	}
 
 	return &prh
 }
 
-func (prh PgRouteHandler) GetStandbys() (standbys []string) {
-	for name, conn := range prh.connections {
+func (prh PgRouteHandler) groupConnections(group string) RouteConnections {
+	return prh.connections.FilteredConnections(prh.config.GroupHosts(group))
+}
+
+func (prh PgRouteHandler) GetStandbys(group string) (standbys []string) {
+	for name, conn := range prh.connections.FilteredConnections(prh.config.GroupHosts(group)) {
 		isStandby, err := conn.IsStandby()
 		if err != nil {
-			prh.logger.Debugf("Could not get state of standby %s, %s", name, err.Error())
+			log.Debugf("Could not get state of standby %s, %s", name, err.Error())
 		}
 
 		if isStandby {
@@ -92,11 +85,11 @@ func (prh PgRouteHandler) GetStandbys() (standbys []string) {
 	return standbys
 }
 
-func (prh PgRouteHandler) GetPrimaries() (primaries []string) {
-	for name, conn := range prh.connections {
+func (prh PgRouteHandler) GetPrimaries(group string) (primaries []string) {
+	for name, conn := range prh.connections.FilteredConnections(prh.config.GroupHosts(group)) {
 		isPrimary, err := conn.IsPrimary()
 		if err != nil {
-			prh.logger.Debugf("Could not get state of primary %s, %s", name, err.Error())
+			log.Debugf("Could not get state of primary %s, %s", name, err.Error())
 		}
 
 		if isPrimary {
@@ -113,7 +106,7 @@ func (prh PgRouteHandler) GetNodeStatus(name string) string {
 	if node, exists := prh.connections[name]; exists {
 		isPrimary, err := node.IsPrimary()
 		if err != nil {
-			prh.logger.Debugf("Could not get state of node %s, %s", name, err.Error())
+			log.Debugf("Could not get state of node %s, %s", name, err.Error())
 
 			return "unavailable"
 		} else if isPrimary {

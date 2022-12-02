@@ -1,9 +1,7 @@
 package pg
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 
@@ -78,7 +76,7 @@ func (c *Conn) Connect() (err error) {
 		log.Panicf("Unable to parse DSN (%s): %e", c.DSN(), err)
 	}
 
-	c.conn, err = pgxpool.ConnectConfig(context.Background(), poolConfig)
+	c.conn, err = pgxpool.ConnectConfig(ctx, poolConfig)
 	if err != nil {
 		c.conn = nil
 
@@ -97,7 +95,7 @@ func (c *Conn) runQueryExists(query string, args ...interface{}) (exists bool, e
 	}
 
 	var answer string
-	err = c.conn.QueryRow(context.Background(), query, args...).Scan(&answer)
+	err = c.conn.QueryRow(ctx, query, args...).Scan(&answer)
 
 	if err == pgx.ErrNoRows {
 		c.logger.Debugf("Query `%s` returns no rows for %s", query, c.endpoint)

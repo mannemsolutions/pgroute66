@@ -35,10 +35,10 @@ else
   echo "reusing existing ./test/config.yaml"
 fi
 
-docker-compose down && docker rmi pgroute66_postgres pgroute66_pgroute66  || echo new install
+docker-compose down && docker rmi pgroute66-postgres pgroute66-pgroute66  || echo new install
 docker-compose up -d --scale postgres=3
 for ((i=1;i<=3;i++)); do
-  docker exec "pgroute66_postgres_${i}" /entrypoint.sh background
+  docker exec "pgroute66-postgres-${i}" /entrypoint.sh background
 done
 
 docker-compose up -d pgroute66
@@ -47,12 +47,12 @@ assert primary 'host1'
 assert primaries '[ host1 ]'
 assert standbys '[ host2, host3 ]'
 
-docker exec pgroute66_postgres_2 /entrypoint.sh promote
+docker exec pgroute66-postgres-2 /entrypoint.sh promote
 assert primary ''
 assert primaries '[ host1, host2 ]'
 assert standbys '[ host3 ]'
 
-docker exec pgroute66_postgres_1 /entrypoint.sh rebuild
+docker exec pgroute66-postgres-1 /entrypoint.sh rebuild
 assert primary 'host2'
 assert primaries '[ host2 ]'
 assert standbys '[ host1, host3 ]'

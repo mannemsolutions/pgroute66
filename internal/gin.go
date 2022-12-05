@@ -3,6 +3,7 @@ package internal
 import (
 	"crypto/tls"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,7 +23,8 @@ func RunAPI() {
 	router.GET("/v1/primary", getPrimary)
 	router.GET("/v1/primaries", getPrimaries)
 	router.GET("/v1/standbys", getStandbys)
-	router.GET("/v1/status/:id", getStatus)
+	router.GET("/v1/:id/status", getStatus)
+	router.GET("/v1/:id/availability", getAvailability)
 
 	log.Debugf("Running on %s", globalHandler.config.BindTo())
 
@@ -85,5 +87,27 @@ func getStatus(c *gin.Context) {
 		c.IndentedJSON(http.StatusNotFound, status)
 	case "unavailable":
 		c.IndentedJSON(http.StatusUnprocessableEntity, status)
+	}
+}
+func getAvailability(c *gin.Context) {
+	id := c.Param("id")
+
+	var limit float64
+	var err error
+	if value := c.DefaultQuery("limit", "10"); value == "" {
+		limit = -1
+	} else if limit, err = strconv.ParseFloat(value, 32); err != nil {
+		log.Errorf("invalid value for limit (%s is not an int32)", value)
+	}
+
+	status := globalHandler.GetNodeAvailability(id, limit)
+	switch status {
+	case "ok":
+		c.IndentedJSON(http.StatusOK, status)
+	case "exceeded":
+		c.IndentedJSON(http.StatusRequestTimeout, status)
+	default:
+
+		c.IndentedJSON(http.StatusExpectationFailed, status)
 	}
 }

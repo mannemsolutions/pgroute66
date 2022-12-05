@@ -118,3 +118,20 @@ func (prh PgRouteHandler) GetNodeStatus(name string) string {
 
 	return "invalid"
 }
+
+func (prh PgRouteHandler) GetNodeAvailability(name string, limit float64) string {
+	if node, exists := prh.connections[name]; exists {
+		if err := node.AvChecker(limit); err == nil {
+			log.Infof("availability of node %s is within limits", name)
+			return "ok"
+		} else if aErr, ok := err.(pg.AvcDurationExceededError); !ok {
+			log.Errorf("unexpeced error occurred while retrieving availability of %s: %e", name, err)
+			return err.Error()
+		} else {
+			log.Infof("Availability limit exceeded for %s: %e", name, aErr)
+			return "exceeded"
+		}
+	}
+
+	return "invalid"
+}

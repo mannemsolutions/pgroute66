@@ -20,10 +20,12 @@ function assert() {
 
 #set -x
 set -e
+docker-compose version
+echo "COMPOSE_COMPATIBILITY=$COMPOSE_COMPATIBILITY"
 
 if [ ! -f ./test/config.yaml ]; then
   mkdir -p ./test
-  cp config.yaml ./test/config.yaml
+  cp config/pgroute66.yaml ./test/config.yaml
   echo "generating openssl cert"
   openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout pgroute66.key -out pgroute66.crt -subj "/C=NL/ST=Zuid Holland/L=Nederland/O=Mannem Solutions/CN=localhost"
   cat pgroute66.crt pgroute66.key

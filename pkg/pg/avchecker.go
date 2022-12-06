@@ -13,36 +13,59 @@ type AvcDurationExceededError struct {
 	actually float64
 }
 
+func fullTableName() string {
+	return fmt.Sprintf("%s.%s", identifierNameSql(AvcSchema), identifierNameSql(AvcTable))
+}
+
 func (der AvcDurationExceededError) Error() string {
 	return fmt.Sprintf("should have taken %f msec, but actually took %f msec", der.max, der.actually)
 }
 
-func (c *Conn) avcTable() error {
-	fullTableName := fmt.Sprintf("%s.%s", identifierNameSql(AvcSchema), identifierNameSql(AvcTable))
+func (der AvcDurationExceededError) String() string {
+	return fmt.Sprintf("exceeded %f by %f msec", der.max, der.actually)
+}
+
+func (c *Conn) avcTableExists() (bool, error) {
 	if exists, err := c.runQueryExists("select relname from pg_class where relname = $1 and relnamespace in "+
 		"(select oid from pg_namespace where nspname=$2)",
 		AvcTable, AvcSchema); err != nil {
-		return fmt.Errorf("failed to check for table %s", fullTableName)
+		return false, fmt.Errorf("failed to check for table %s", fullTableName())
+	} else if exists {
+		return true, nil
+	} else {
+		return false, nil
+	}
+}
+
+func (c *Conn) AvcCreateTable() error {
+	log.Infof("Creating table")
+	if exists, err := c.avcTableExists(); err != nil {
+		log.Errorf("failed to check if table %s exists: %e", fullTableName(), err)
+		return err
 	} else if exists {
 		return nil
 	}
-	log.Infof("Creating table")
 	if _, err := c.runQueryExec(fmt.Sprintf("create table %s (%s timestamp)",
-		fullTableName, identifierNameSql(AvcColumn))); err != nil {
-		return fmt.Errorf("failed to create table %s", fullTableName)
+		fullTableName(), identifierNameSql(AvcColumn))); err != nil {
+		return fmt.Errorf("failed to create table %s", fullTableName())
 	}
-	if affected, err := c.runQueryExec(fmt.Sprintf("insert into %s values(now())", fullTableName)); err != nil {
-		return fmt.Errorf("failed to create table %s", fullTableName)
+	if affected, err := c.runQueryExec(fmt.Sprintf("insert into %s values(now())", fullTableName())); err != nil {
+		return fmt.Errorf("failed to create table %s", fullTableName())
 	} else if affected != 1 {
 		return fmt.Errorf("unexpected result while inserting into table %s", fullTableName)
 	}
 	return nil
 }
 
-func (c *Conn) avCheckerDuration() (float64, error) {
+func (c *Conn) avCheckerGetDuration() (float64, error) {
 	fullColName := identifierNameSql(AvcColumn)
-	fullTableName := fmt.Sprintf("%s.%s", identifierNameSql(AvcSchema), identifierNameSql(AvcTable))
-	qry := fmt.Sprintf("select extract('epoch' from (now()-%s)) duration from %s", fullColName, fullTableName)
+	if exists, err := c.avcTableExists(); err != nil {
+		log.Errorf("failed to check if table %s exists: %e", fullTableName(), err)
+		return 0, err
+	} else if !exists {
+		return -1, nil
+	}
+	qry := fmt.Sprintf("select extract('epoch' from (now()-%s)) duration from %s", fullColName, fullTableName())
 	if result, err := c.GetRows(qry); err != nil {
 		log.Errorf("failed to retrieve duration from postgres: %e", err)
 		return 0, err
@@ -57,11 +80,31 @@ func (c *Conn) avCheckerDuration() (float64, error) {
 	}
 }
 
-func (c *Conn) AvChecker(max float64) error {
-	if err := c.avcTable(); err != nil {
+func (c *Conn) AvUpdateDuration() error {
+	var affected int64
+	if isPrimary, err := c.IsPrimary(); err != nil {
 		return err
-	} else if since, cdErr := c.avCheckerDuration(); cdErr != nil {
-		return cdErr
+	} else if !isPrimary {
+		log.Infof("skipping update of %s on a standby database server", fullTableName())
+		return nil
+	} else if err = c.AvcCreateTable(); err != nil {
+		return err
+	} else if affected, err = c.runQueryExec(fmt.Sprintf("update %s set %s = now()",
+		fullTableName(), identifierNameSql(AvcColumn))); err != nil {
+		return err
+	} else if affected != 1 {
+		return fmt.Errorf("unexpecetedly updated %d rows instead of 1 for %s", affected, fullTableName())
+	}
+	return nil
+}
+
+func (c *Conn) AvCheckDuration(max float64) error {
+	var err error
+	var since float64
+	if since, err = c.avCheckerGetDuration(); err != nil {
+		return err
+	} else if since < 0 {
+		return fmt.Errorf("table %s does not exist", fullTableName())
 	} else if since > max {
 		return AvcDurationExceededError{
 			max:      max,
@@ -70,52 +113,3 @@ func (c *Conn) AvChecker(max float64) error {
 	}
 	return nil
 }
-
-/*
-	cur.execute('BEGIN')
-	cur.execute('update public.avchecker set last = now()')
-	cur.execute('COMMIT')
-	cur.execute('select last from public.avchecker')
-	row=next(cur)
-	new = row[0]
-	if last:
-	delta = new-last
-	if delta.total_seconds() >= (SLEEPTIME*1.5):
-	print(delta, flush=True)
-	last = new
-*/
-
-/*
-#!/usr/bin/env python3
-import os
-import psycopg2
-import time
-cn=None
-last = None
-SLEEPTIME=float(os.environ.get('AVCHECKER_SLEEPTIME', '5'))
-while True:
-    try:
-        time.sleep(SLEEPTIME)
-        if not cn:
-            cn = psycopg2.connect('')
-            cur = cn.cursor()
-            cur.execute('select count(*) from pg_class where relname = %s and relnamespace in (select oid from pg_namespace where nspname=%s) ', ('avchecker', 'public'))
-            if next(cur)[0] == 0:
-                print('Creating table')
-                cur.execute('create table public.avchecker(last timestamp)')
-                cur.execute('insert into public.avchecker values(now())')
-        cur.execute('BEGIN')
-        cur.execute('update public.avchecker set last = now()')
-        cur.execute('COMMIT')
-        cur.execute('select last from public.avchecker')
-        row=next(cur)
-        new = row[0]
-        if last:
-            delta = new-last
-            if delta.total_seconds() >= (SLEEPTIME*1.5):
-                print(delta, flush=True)
-        last = new
-    except (psycopg2.InternalError, psycopg2.OperationalError, psycopg2.DatabaseError) as err:
-        print(str(err).split('\n')[0])
-        cn = None
-*/

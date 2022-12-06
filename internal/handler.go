@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"encoding/base64"
+	"fmt"
 	"sort"
 
 	"github.com/mannemsolutions/pgroute66/pkg/pg"
@@ -119,9 +120,43 @@ func (prh PgRouteHandler) GetNodeStatus(name string) string {
 	return "invalid"
 }
 
+func (prh PgRouteHandler) UpdateNodeAvailability() {
+	for nodeName, conn := range prh.connections {
+		if isPrimary, err := conn.IsPrimary(); err != nil {
+			log.Errorf("failed to check if node %s is primary: %e", nodeName, err)
+		} else if !isPrimary {
+			continue
+		} else if err = conn.AvUpdateDuration(); err != nil {
+			log.Errorf("failed to update availability info on node %s: %e", nodeName, err)
+			return
+		} else {
+			log.Infof("updating availability info on node %s", nodeName)
+			return
+		}
+	}
+}
+
+func (prh PgRouteHandler) CreateAvailabilityTable() {
+	for nodeName, conn := range prh.connections {
+		if isPrimary, err := conn.IsPrimary(); err != nil {
+			log.Errorf("failed to check if node %s is primary: %e", nodeName, err)
+		} else if !isPrimary {
+			continue
+		} else if err = conn.AvcCreateTable(); err != nil {
+			log.Errorf("failed to create availability table on node %s: %e", nodeName, err)
+			return
+		} else {
+			log.Infof("creating availability table on node %s", nodeName)
+			return
+		}
+	}
+}
+
 func (prh PgRouteHandler) GetNodeAvailability(name string, limit float64) string {
+	prh.CreateAvailabilityTable()
+	defer prh.UpdateNodeAvailability()
 	if node, exists := prh.connections[name]; exists {
-		if err := node.AvChecker(limit); err == nil {
+		if err := node.AvCheckDuration(limit); err == nil {
 			log.Infof("availability of node %s is within limits", name)
 			return "ok"
 		} else if aErr, ok := err.(pg.AvcDurationExceededError); !ok {
@@ -129,7 +164,7 @@ func (prh PgRouteHandler) GetNodeAvailability(name string, limit float64) string
 			return err.Error()
 		} else {
 			log.Infof("Availability limit exceeded for %s: %e", name, aErr)
-			return "exceeded"
+			return fmt.Sprintf("exceeded (%s)", aErr.String())
 		}
 	}
 

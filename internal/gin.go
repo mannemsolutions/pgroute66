@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -101,13 +102,11 @@ func getAvailability(c *gin.Context) {
 	}
 
 	status := globalHandler.GetNodeAvailability(id, limit)
-	switch status {
-	case "ok":
+	if status == "ok " {
 		c.IndentedJSON(http.StatusOK, status)
-	case "exceeded":
+	} else if strings.HasPrefix(status, "exceeded") {
 		c.IndentedJSON(http.StatusRequestTimeout, status)
-	default:
-
+	} else {
 		c.IndentedJSON(http.StatusExpectationFailed, status)
 	}
 }

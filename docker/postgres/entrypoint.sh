@@ -36,7 +36,7 @@ host    replication     postgres        ${IP}               md5" >> "${PGDATA}/p
 
 function standby() {
   PGVERSION=${PGVERSION:-12}
-  PGTARGET_SESSION_ATTRS=read-write
+  export PGTARGETSESSIONATTRS=read-write
   export PGHOST=${PGHOSTS}
   if [ ! -e "${PGDATA}" ]; then
     mkdir -p "${PGDATA}"

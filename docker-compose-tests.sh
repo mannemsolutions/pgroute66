@@ -5,20 +5,20 @@ function assert() {
   EP=$1
   EXPECTED=$2
   if [ -e pgroute66.crt ]; then
-    RESULT=$(curl --cacert pgroute66.crt "https://localhost:8443/v1/${EP}" | xargs)
+    RESULT=$(curl --cacert pgroute66.crt "https://localhost:8443/v1/${EP}" | sed 's/"//g' | xargs)
   else
-    RESULT=$(curl "http://localhost:8080/v1/${EP}" | xargs)
+    RESULT=$(curl "http://localhost:8080/v1/${EP}" | sed 's/"//g' | xargs)
   fi
-  if [ "${RESULT}" = "${EXPECTED}" ]; then
+  if [[ "${RESULT}" =~ ${EXPECTED} ]]; then
     echo "test${TST}: OK"
   else
-    echo "test${TST}: EROR: expected '${EXPECTED}', but got '${RESULT}'"
+    echo "test${TST}: ERROR: expected '${EXPECTED}', but got '${RESULT}'"
     docker-compose logs pgroute66 postgres
     return 1
   fi
 }
 
-#set -x
+set -x
 set -e
 docker-compose version
 echo "COMPOSE_COMPATIBILITY=$COMPOSE_COMPATIBILITY"
@@ -45,18 +45,26 @@ done
 
 docker-compose up -d pgroute66
 docker ps -a
-assert primary 'host1'
-assert primaries '[ host1 ]'
-assert standbys '[ host2, host3 ]'
+assert primary '^host1$'
+assert primaries '^\[ host1 \]$'
+assert standbys '^\[ host2, host3 \]$'
 
 docker exec pgroute66-postgres-2 /entrypoint.sh promote
-assert primary ''
-assert primaries '[ host1, host2 ]'
-assert standbys '[ host3 ]'
+assert primary '^$'
+assert primaries '^\[ host1, host2 \]$'
+assert standbys '^\[ host3 \]$'
 
 docker exec pgroute66-postgres-1 /entrypoint.sh rebuild
-assert primary 'host2'
-assert primaries '[ host2 ]'
-assert standbys '[ host1, host3 ]'
+docker exec pgroute66-postgres-3 /entrypoint.sh rebuild
+assert primary '^host2$'
+assert primaries '^\[ host2 \]$'
+assert standbys '^\[ host1, host3 \]$'
+
+assert 'host1/availability?limit=2' '^(table .* does not exist|ok)$'
+# Give replication time to catchup
+sleep 1
+assert 'host1/availability?limit=3' '^ok$'
+sleep 2
+assert 'host1/availability?limit=1' '^exceeded'
 
 echo "All is as expected"

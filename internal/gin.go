@@ -2,6 +2,7 @@ package internal
 
 import (
 	"crypto/tls"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -27,14 +28,14 @@ func RunAPI() {
 	router.GET("/v1/:id/status", getStatus)
 	router.GET("/v1/:id/availability", getAvailability)
 
-	log.Debugf("Running on %s", globalHandler.config.BindTo())
+	globalHandler.log.Debugf("Running on %s", globalHandler.config.BindTo())
 
 	if globalHandler.config.Ssl.Enabled() {
-		log.Debug("Running with SSL")
+		globalHandler.log.Debug("Running with SSL")
 
 		cert, err = tls.X509KeyPair(globalHandler.config.Ssl.MustCertBytes(), globalHandler.config.Ssl.MustKeyBytes())
 		if err != nil {
-			log.Fatal("Error parsing cert and key", err)
+			globalHandler.log.Fatal("Error parsing cert and key", err)
 		}
 
 		tlsConfig := tls.Config{
@@ -44,7 +45,7 @@ func RunAPI() {
 		server := http.Server{Addr: globalHandler.config.BindTo(), Handler: router, TLSConfig: &tlsConfig}
 		err = server.ListenAndServeTLS("", "")
 	} else {
-		log.Debug("Running without SSL")
+		globalHandler.log.Debug("Running without SSL")
 		err = router.Run(globalHandler.config.BindTo())
 	}
 
@@ -63,7 +64,6 @@ func getPrimary(c *gin.Context) {
 	default:
 		c.IndentedJSON(http.StatusConflict, "")
 	}
-
 }
 
 // getPrimaries responds with the list of all albums as JSON.
@@ -82,27 +82,30 @@ func getStatus(c *gin.Context) {
 
 	status := globalHandler.GetNodeStatus(id)
 	switch status {
-	case "primary", "standby":
+	case GHStatusPrimary, GHStatusStandby:
 		c.IndentedJSON(http.StatusOK, status)
-	case "invalid":
+	case GHStatusInvalid:
 		c.IndentedJSON(http.StatusNotFound, status)
-	case "unavailable":
+	case GHStatusUnavailable:
 		c.IndentedJSON(http.StatusUnprocessableEntity, status)
 	}
 }
+
 func getAvailability(c *gin.Context) {
 	id := c.Param("id")
 
 	var limit float64
+
 	var err error
+
 	if value := c.DefaultQuery("limit", "10"); value == "" {
 		limit = -1
 	} else if limit, err = strconv.ParseFloat(value, 32); err != nil {
-		log.Errorf("invalid value for limit (%s is not an int32)", value)
+		globalHandler.log.Errorf("invalid value for limit (%s is not an int32)", value)
 	}
 
 	status := globalHandler.GetNodeAvailability(id, limit)
-	if status == "ok " {
+	if status == GHStatusOk {
 		c.IndentedJSON(http.StatusOK, status)
 	} else if strings.HasPrefix(status, "exceeded") {
 		c.IndentedJSON(http.StatusRequestTimeout, status)

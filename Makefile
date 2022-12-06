@@ -20,6 +20,7 @@ run:
 
 fmt:
 	gofmt -w .
+	gofumpt -l -w .
 	goimports -w .
 	gci write .
 
@@ -27,5 +28,6 @@ test: sec lint
 
 sec:
 	gosec ./...
+
 lint:
 	golangci-lint run

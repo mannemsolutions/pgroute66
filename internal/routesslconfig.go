@@ -3,6 +3,7 @@ package internal
 import (
 	"encoding/base64"
 	"fmt"
+	"log"
 )
 
 /*
@@ -33,7 +34,7 @@ func (rsc RouteSSLConfig) KeyBytes() ([]byte, error) {
 func (rsc RouteSSLConfig) MustKeyBytes() []byte {
 	kb, err := rsc.KeyBytes()
 	if err != nil {
-		log.Fatal("could not decrypt SSL key", err)
+		globalHandler.log.Fatal("could not decrypt SSL key", err)
 	}
 
 	return kb

@@ -3,11 +3,12 @@ package internal
 import (
 	"flag"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"gopkg.in/yaml.v2"
 )
 
 /*
@@ -73,21 +74,25 @@ func NewConfig() (config RouteConfig, err error) {
 	} else {
 		config.LogLevel = strings.ToLower(config.LogLevel)
 	}
+
 	return config, nil
 }
 
-// GroupHosts returns a list of hosts that are part of a group as defined in rc.HostGroups
-// HostGroup "all" is a special placeholder for all hosts defined in rc.Hosts
+// GroupHosts returns a list of hosts that are part of a group as defined in rc.HostGroups.
+// HostGroup "all" is a special placeholder for all hosts defined in rc.Hosts.
 func (rc RouteConfig) GroupHosts(groupName string) RouteHostGroup {
 	if groupName == "all" {
 		var rhg RouteHostGroup
 		for host := range rc.Hosts {
 			rhg = append(rhg, host)
 		}
+
 		return rhg
 	}
+
 	if groupHosts, ok := rc.Groups[groupName]; !ok {
-		log.Errorf("hostgroup %s is not defined", groupName)
+		globalHandler.log.Errorf("hostgroup %s is not defined", groupName)
+
 		return RouteHostGroup{}
 	} else {
 		return groupHosts

@@ -6,6 +6,8 @@ linters:
   # Disable specific linter
   # https://golangci-lint.run/usage/linters/#disabled-by-default-linters--e--enable
   disable:
+    - nosnakecase
+    - ifshort
 #    - asciicheck
 #    - bidichk
 #    - bodyclose

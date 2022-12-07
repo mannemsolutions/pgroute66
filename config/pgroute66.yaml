@@ -1,7 +1,7 @@
 ---
 hosts:
   host1:
-    host: pgroute66_postgres_1
+    host: pgroute66-postgres-1
     port: 5432
     user: postgres
     dbname: postgres
@@ -10,7 +10,7 @@ hosts:
     pool_max_conns: 2
     pool_max_conn_idle_time: 60s
   host2:
-    host: pgroute66_postgres_2
+    host: pgroute66-postgres-2
     port: 5432
     user: postgres
     dbname: postgres
@@ -19,7 +19,7 @@ hosts:
     pool_max_conns: 2
     pool_max_conn_idle_time: 60s
   host3:
-    host: pgroute66_postgres_3
+    host: pgroute66-postgres-3
     port: 5432
     user: postgres
     dbname: postgres
@@ -27,6 +27,13 @@ hosts:
     application_name: pgroute66
     pool_max_conns: 2
     pool_max_conn_idle_time: 60s
+
+host_groups:
+  cluster:
+    - host1
+    - host2
+    - host3
+
 
 loglevel: debug
 

@@ -2,7 +2,10 @@ package internal
 
 import (
 	"crypto/tls"
+	"log"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -22,16 +25,17 @@ func RunAPI() {
 	router.GET("/v1/primary", getPrimary)
 	router.GET("/v1/primaries", getPrimaries)
 	router.GET("/v1/standbys", getStandbys)
-	router.GET("/v1/status/:id", getStatus)
+	router.GET("/v1/:id/status", getStatus)
+	router.GET("/v1/:id/availability", getAvailability)
 
-	globalHandler.logger.Debugf("Running on %s", globalHandler.config.BindTo())
+	globalHandler.log.Debugf("Running on %s", globalHandler.config.BindTo())
 
 	if globalHandler.config.Ssl.Enabled() {
-		globalHandler.logger.Debug("Running with SSL")
+		globalHandler.log.Debug("Running with SSL")
 
 		cert, err = tls.X509KeyPair(globalHandler.config.Ssl.MustCertBytes(), globalHandler.config.Ssl.MustKeyBytes())
 		if err != nil {
-			globalHandler.logger.Fatal("Error parsing cert and key", err)
+			globalHandler.log.Fatal("Error parsing cert and key", err)
 		}
 
 		tlsConfig := tls.Config{
@@ -41,19 +45,17 @@ func RunAPI() {
 		server := http.Server{Addr: globalHandler.config.BindTo(), Handler: router, TLSConfig: &tlsConfig}
 		err = server.ListenAndServeTLS("", "")
 	} else {
-		globalHandler.logger.Debug("Running without SSL")
+		globalHandler.log.Debug("Running without SSL")
 		err = router.Run(globalHandler.config.BindTo())
 	}
 
 	if err != nil {
-		globalHandler.logger.Panicf("Error running API: %s", err.Error())
+		log.Panicf("Error running API: %s", err.Error())
 	}
 }
 
-// getPrimary responds with the list of all albums as JSON.
 func getPrimary(c *gin.Context) {
-	primary := globalHandler.GetPrimaries()
-
+	primary := globalHandler.GetPrimaries(c.DefaultQuery("group", "all"))
 	switch len(primary) {
 	case 0:
 		c.IndentedJSON(http.StatusNotFound, "")
@@ -66,13 +68,13 @@ func getPrimary(c *gin.Context) {
 
 // getPrimaries responds with the list of all albums as JSON.
 func getPrimaries(c *gin.Context) {
-	primaries := globalHandler.GetPrimaries()
+	primaries := globalHandler.GetPrimaries(c.DefaultQuery("group", "all"))
 	c.IndentedJSON(http.StatusOK, primaries)
 }
 
 // getStandbys responds with the list of all albums as JSON.
 func getStandbys(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, globalHandler.GetStandbys())
+	c.IndentedJSON(http.StatusOK, globalHandler.GetStandbys(c.DefaultQuery("group", "all")))
 }
 
 func getStatus(c *gin.Context) {
@@ -80,11 +82,34 @@ func getStatus(c *gin.Context) {
 
 	status := globalHandler.GetNodeStatus(id)
 	switch status {
-	case "primary", "standby":
+	case GHStatusPrimary, GHStatusStandby:
 		c.IndentedJSON(http.StatusOK, status)
-	case "invalid":
+	case GHStatusInvalid:
 		c.IndentedJSON(http.StatusNotFound, status)
-	case "unavailable":
+	case GHStatusUnavailable:
 		c.IndentedJSON(http.StatusUnprocessableEntity, status)
+	}
+}
+
+func getAvailability(c *gin.Context) {
+	id := c.Param("id")
+
+	var limit float64
+
+	var err error
+
+	if value := c.DefaultQuery("limit", "10"); value == "" {
+		limit = -1
+	} else if limit, err = strconv.ParseFloat(value, 32); err != nil {
+		globalHandler.log.Errorf("invalid value for limit (%s is not an int32)", value)
+	}
+
+	status := globalHandler.GetNodeAvailability(id, limit)
+	if status == GHStatusOk {
+		c.IndentedJSON(http.StatusOK, status)
+	} else if strings.HasPrefix(status, "exceeded") {
+		c.IndentedJSON(http.StatusRequestTimeout, status)
+	} else {
+		c.IndentedJSON(http.StatusExpectationFailed, status)
 	}
 }

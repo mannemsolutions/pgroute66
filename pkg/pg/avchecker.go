@@ -59,7 +59,7 @@ func (c *Conn) AvcCreateTable(ctx context.Context) error {
 	if affected, err := c.runQueryExec(ctx, fmt.Sprintf("insert into %s values(now())", fullTableName())); err != nil {
 		return fmt.Errorf("failed to create table %s", fullTableName())
 	} else if affected != 1 {
-		return fmt.Errorf("unexpected result while inserting into table %s", fullTableName)
+		return fmt.Errorf("unexpected result while inserting into table %s", fullTableName())
 	}
 
 	return nil

@@ -80,10 +80,6 @@ func NewPgRouteHandler() *PgRouteHandler {
 	return &prh
 }
 
-func (prh PgRouteHandler) groupConnections(group string) RouteConnections {
-	return prh.connections.FilteredConnections(prh.config.GroupHosts(group))
-}
-
 func (prh PgRouteHandler) GetStandbys(group string) (standbys []string) {
 	for name, conn := range prh.connections.FilteredConnections(prh.config.GroupHosts(group)) {
 		isStandby, err := conn.IsStandby(context.Background())

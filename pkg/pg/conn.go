@@ -138,7 +138,8 @@ func (c *Conn) GetRows(ctx context.Context, query string, args ...interface{}) (
 
 	c.logger.Debugf("Running SQL: %s with args %v", query, args)
 	result, err := c.conn.Query(ctx, query, args...)
-
+	//lint:ignore SA5001 This is a false possitive...
+	//nolint:staticcheck // SA5001 is a false possitive...
 	defer result.Close()
 
 	if err != nil {

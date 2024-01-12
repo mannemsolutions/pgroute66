@@ -46,7 +46,6 @@ func NewConfig() (config RouteConfig, err error) {
 	flag.Parse()
 
 	if version {
-		//nolint
 		fmt.Println(appVersion)
 		os.Exit(0)
 	}

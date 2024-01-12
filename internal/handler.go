@@ -56,6 +56,7 @@ func NewPgRouteHandler() *PgRouteHandler {
 
 	prh.config, err = NewConfig()
 	if err != nil {
+		prh.initLogger("")
 		prh.log.Fatal("Cannot parse config", err)
 	}
 

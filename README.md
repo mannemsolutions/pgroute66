@@ -37,7 +37,7 @@ Please refer to [our download instructions](DOWNLOAD_AND_RUN.md) for more detail
 ## Usage
 After downloading the binary to a folder in your path, you can run pgroute66 with a command like:
 ```bash
-pgroute66 ./pgroute66.yml
+pgroute66 -c ./pgroute66.yml
 ```
 
 ## Defining your config
@@ -53,25 +53,28 @@ hosts:
     host: 1.2.3.4
     port: 5432
     user: pgroute66
-    password: cGEkJHcwcmQ=
+    b64password: cGEkJHcwcmQ=
   host2:
     host: 1.2.3.5
     port: 5432
     user: pgroute66
-    password: cGEkJHcwcmQ=
+    b64password: cGEkJHcwcmQ=
   host3:
     host: 1.2.3.6
     port: 5432
     user: pgroute66
-    password: cGEkJHcwcmQ=
+    b64password: cGEkJHcwcmQ=
 
 bind: 127.0.0.1
 
 port: 8443
 
-ssl:
-  cert: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2d0lCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktrd2dn
-  key: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQzakNDQXNZQ0NRRGZYZkhoanBCZHNEQU5CZ2txaGtpRzl
+#ssl:
+#  # This should be a base64 encypted value of a certificate. Below is not a proper certificate, so you should generate one.
+#  # checkout chainsmith (https://hub.docker.com/r/mannemsolutions/chainsmith) for a nice and easy approach
+#  cert: LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0tCk1JSUV2d0lCQURBTkJna3Foa2lHOXcwQkFRRUZBQVNDQktrd2dn
+#  # This should be a base64 encypted value of a certificate key. Below is not a proper key. 
+#  key: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUQzakNDQXNZQ0NRRGZYZkhoanBCZHNEQU5CZ2txaGtpRzl
 
 loglevel: debug
 
